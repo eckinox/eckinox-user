@@ -15,7 +15,7 @@ use Eckinox\Nex_model_tools\{
 };
 
 /**
- *  @table "name" : "user_users"
+ *  @table "name": "user_users"
  *
  *  @field {
  *      "id" : "id",
@@ -24,7 +24,6 @@ use Eckinox\Nex_model_tools\{
  *      "email" : { "type" : "string", "null" : true, "size" : 150 },
  *      "address" : { "type" : "string", "null" : true, "size" : 115 },
  *      "zip_code" : { "type" : "string", "null" : true, "size" : 15 },
- *      "city" : { "type" : "string", "null" : true, "size" : 255 },
  *      "province" : { "type" : "string", "null" : true, "size" : 45 },
  *      "country" : { "type" : "string", "null" : true, "size" : 3 },
  *      "phone" : { "type" : "string", "null" : true, "size" : 15 },
@@ -34,9 +33,8 @@ use Eckinox\Nex_model_tools\{
  *      "username" : { "type" : "string", "null" : true, "size" : 35},
  *      "guid" : { "type" : "string", "null" : true, "size" : 16 },
  *      "group_list" : { "type" : "string", "null" : true },
- *      "privileges" : { "type" : "text", "null" : true },
- *      "created_at" : { "type" : "created at" },
- *      "updated_at" : { "type" : "updated at" }
+ *      "date_created" : { "type" : "created at" },
+ *      "last_updated" : { "type" : "updated at" }
  *  }
  *
  *  @validation {
@@ -60,14 +58,12 @@ use Eckinox\Nex_model_tools\{
  *          "unique" : true
  *      },
  *      "guid" : "readonly",
- *      "created_at" : "readonly",
- *      "updated_at" : "readonly"
+ *      "date_created" : "readonly",
+ *      "last_updated" : "readonly"
  *  }
  */
 class User extends \Eckinox\Nex\Model {
     use cookies, sessions, validation;
-
-    public $tablename = 'user_users' ;
 
     # Set from config
     protected $use_session = true;
@@ -98,20 +94,6 @@ class User extends \Eckinox\Nex\Model {
         return $this->logged ?: $this->from_session() || $this->from_cookie() || $this->system();
     }
 
-    public function loading_done() {
-        return $this->each(function() {
-            $this['privileges'] = json_decode($this['privileges'] ?: '[]', true);
-        });
-    }
-
-    public function save($reload = false, $mode = null) {
-        $this['privileges'] = json_encode($tmp = $this['privileges']);
-        parent::save($reload, $mode);
-
-        $this['privileges'] = $tmp;
-        return $this;
-    }
-
     public function set_password($password) {
         $this['password'] = $password;
         return $this->hash_password();
@@ -122,12 +104,12 @@ class User extends \Eckinox\Nex\Model {
         return $this;
     }
 
-    public function authenticate($field, $password, $force = false) {
+    public function authenticate($field, $password) {
         if ( ! $this->logged() ) {
             $this->where($this->connection_fields, $field)->load_all(1);
 
             if ( $this->loaded() ) {
-                if ( $force || password_verify($password, $this['password'] )) {
+                if ( password_verify($password, $this['password'] )) {
                     $this->event->trigger('User.authenticated');
 
                     $this->use_session && $this->session("User.user.id", $this['id']);
@@ -204,9 +186,5 @@ class User extends \Eckinox\Nex\Model {
 
     public function fullname() {
         return trim("{$this['first_name']} {$this['last_name']}");
-    }
-
-    public function privilege($key) {
-        return in_array($key, $this['privileges'] ?? []) || in_array("*", $this['privileges']);
     }
 }
